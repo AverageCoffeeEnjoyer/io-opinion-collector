@@ -16,7 +16,6 @@ import java.util.UUID;
 @NoArgsConstructor
 public class ProductDTO {
 
-    @Setter(AccessLevel.NONE)
     @NotNull
     private UUID categoryId;
 
@@ -44,6 +43,7 @@ public class ProductDTO {
         sb.append("categoryId=").append(categoryId);
         sb.append(", name='").append(name).append('\'');
         sb.append(", description='").append(description).append('\'');
+        sb.append(", properties='").append(properties).append('\'');
         return sb.toString();
     }
 }

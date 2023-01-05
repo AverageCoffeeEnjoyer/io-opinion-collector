@@ -68,13 +68,13 @@ INSERT INTO public.category (categoryid, name, parent_category_category_id) VALU
 INSERT INTO public.category_fields (category_categoryid, fields_fieldid) VALUES ('f93af257-b1c2-4643-a844-5b2a7d75873f', 'f93af257-b5f2-4643-a844-5b2a7d75873f');
 
 
-INSERT INTO iodb.public.product (product_id, category_id, name, description, deleted, confirmed)
-VALUES ('4811913c-b953-4856-979b-838488049d07', 'b293013b-40da-4dde-a997-bce3068636ec', 'Product1', 'Description1', false, true),
-       ('cbee1685-9b16-47ae-8c34-afa94e4f1a8f', 'b293013b-40da-4dde-a997-bce3068636ec', 'Product2', 'Description2', false, true),
-       ('2f335bfb-6805-4a40-ae9c-53b43f22b3ce', 'b293013b-40da-4dde-a997-bce3068636ec', 'Product3', 'Description3', false, true),
-       ('b71a95ef-3f19-4ced-a0f4-ebdca10a7668', 'b293013b-40da-4dde-a997-bce3068636ec', 'Product4', 'Description4', false, true),
-       ('4950d349-1127-4690-82a0-94fdc81b019b', 'b293013b-40da-4dde-a997-bce3068636ec', 'Product5', 'Description5', false, true),
-       ('b4c7b393-2e26-49e2-9783-785583bd4c66', 'b293013b-40da-4dde-a997-bce3068636ec', 'Product6', 'Description6', true, true);
+INSERT INTO iodb.public.product (unique_product_id, product_id, category_id, name, description, deleted, confirmed)
+VALUES ('4f654b04-9cc8-4829-98a9-33f9aa3ed41c', '4811913c-b953-4856-979b-838488049d07', 'b293013b-40da-4dde-a997-bce3068636ec', 'Product1', 'Description1', false, true),
+       ('966cf764-b12f-47d7-993b-7c7949275249', 'cbee1685-9b16-47ae-8c34-afa94e4f1a8f', 'b293013b-40da-4dde-a997-bce3068636ec', 'Product2', 'Description2', false, true),
+       ('3042e38b-80b5-4681-b62e-628aae202f28', '2f335bfb-6805-4a40-ae9c-53b43f22b3ce', 'b293013b-40da-4dde-a997-bce3068636ec', 'Product3', 'Description3', false, true),
+       ('95713d55-ad21-4e51-8382-381901ff5529', 'b71a95ef-3f19-4ced-a0f4-ebdca10a7668', 'b293013b-40da-4dde-a997-bce3068636ec', 'Product4', 'Description4', false, true),
+       ('9846ac77-c10d-464f-ab6e-d756f938cf55', '4950d349-1127-4690-82a0-94fdc81b019b', 'b293013b-40da-4dde-a997-bce3068636ec', 'Product5', 'Description5', false, true),
+       ('ae798d2d-426a-4c9e-933f-a355b9d9ad78', 'b4c7b393-2e26-49e2-9783-785583bd4c66', 'b293013b-40da-4dde-a997-bce3068636ec', 'Product6', 'Description6', true, true);
 
 -- INSERT INTO PROPERTIES (PRODUCT_PRODUCT_ID, VALUE, KEY)
 -- VALUES ('4811913c-b953-4856-979b-838488049d07', 'value1', 'key1'),

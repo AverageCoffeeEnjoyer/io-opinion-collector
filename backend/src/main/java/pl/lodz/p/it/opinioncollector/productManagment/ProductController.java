@@ -1,6 +1,8 @@
 package pl.lodz.p.it.opinioncollector.productManagment;
 
 import jakarta.validation.Valid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -15,6 +17,8 @@ import java.util.UUID;
 @RequestMapping("/products")
 public class ProductController {
     private final ProductManager productManager;
+
+    Logger logger = LoggerFactory.getLogger(ProductController.class);
 
     @Autowired
     public ProductController(ProductManager productManager) {
@@ -49,27 +53,29 @@ public class ProductController {
 
     //PostMapping
 
-    @PostMapping("")
-    public ResponseEntity<Product> createProduct(@Valid @RequestBody ProductDTO productDTO) {
-        Product product = productManager.createProduct(productDTO);
-        return ResponseEntity.ok(product);
-    }
+//    @PostMapping("")
+//    public ResponseEntity<Product> createProduct(@Valid @RequestBody ProductDTO productDTO) {
+//        Product product = productManager.createProduct(productDTO);
+//        return ResponseEntity.ok(product);
+//    }
 
     @PostMapping("/suggestion")
     public ResponseEntity<Product> createSuggestion(@Valid @RequestBody ProductDTO productDTO) throws CategoryNotFoundException {
-        Product product = productManager.createSuggestion(productDTO);
+        Product product = productManager.createCreateSuggestion(productDTO);
         return ResponseEntity.ok(product);
     }
 
     //PutMapping
     @PutMapping("/{uuid}")
     public ResponseEntity<Product> updateProduct(@PathVariable("uuid") UUID uuid,
-                                                 @Valid @RequestBody ProductDTO productDTO) throws ProductNotFoundException {
-        Product product = productManager.updateProduct(uuid, productDTO);
-        if (product == null) {
+                                                 @Valid @RequestBody ProductDTO productDTO) throws ProductNotFoundException, CategoryNotFoundException {
+        logger.info(productDTO.toString());
+        try {
+            Product product = productManager.createUpdateSuggestion(uuid, productDTO);
+            return ResponseEntity.ok(product);
+        } catch (ProductNotFoundException e) {
             throw new ProductNotFoundException();
         }
-        return ResponseEntity.ok(product);
     }
 
     @PutMapping("/{uuid}/confirm")
@@ -91,7 +97,7 @@ public class ProductController {
     @PutMapping("/{uuid}/delete")
     public ResponseEntity<?> makeDeleteFormProduct(@PathVariable("uuid") UUID uuid,
                                                    @Valid @RequestBody ProductDeleteForm productDF) throws ProductNotFoundException {
-        if (!productManager.makeDeleteFormProduct(uuid, productDF)) {
+        if (!productManager.createDeleteSuggestion(uuid, productDF)) {
             throw new ProductNotFoundException();
         }
         return ResponseEntity.noContent().build();

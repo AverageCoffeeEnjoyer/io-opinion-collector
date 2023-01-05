@@ -3,13 +3,12 @@ package pl.lodz.p.it.opinioncollector.productManagment;
 
 import jakarta.persistence.*;
 import jakarta.validation.Valid;
-import lombok.AccessLevel;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 import pl.lodz.p.it.opinioncollector.category.model.Category;
 
 import java.io.Serializable;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -21,15 +20,12 @@ import java.util.UUID;
 public class Product implements Serializable {
 
     @Id
-    @Column(name = "product_ID", nullable = false)
+    @Column(nullable = true)
     @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID uniqueProductId;
+
+    @Column(name = "product_id")
     private UUID productId;
-
-    @Column(nullable = true)
-    private UUID parentProductId;
-
-    @Column(nullable = true)
-    private UUID constantProductId;
 
     @ManyToOne(optional = false) //cascade?
     @JoinColumn(name = "category_id", referencedColumnName = "categoryid", nullable = false)
@@ -50,6 +46,7 @@ public class Product implements Serializable {
     @JoinColumn(name = "product_id")
     private Map<String, String> properties = new HashMap<>();
 
+    LocalDateTime createdAt;
 
     public Product(UUID categoryId, String name, String description) {
         this.name = name;
@@ -58,12 +55,20 @@ public class Product implements Serializable {
         this.confirmed = true;
     }
 
-    public Product(ProductDTO productDTO) {
+
+    // creates "add product" suggestion
+    public Product(ProductDTO productDTO, Category category) {
+        this.uniqueProductId = UUID.randomUUID();
+        this.productId = UUID.randomUUID();
         this.name = productDTO.getName();
+        this.category = category;
         this.description = productDTO.getDescription();
         this.deleted = false;
-        this.confirmed = true;
+        this.confirmed = false;
+        this.properties = productDTO.getProperties();
+        this.createdAt = LocalDateTime.now();
     }
+
 
     public void removeProperty(String key) {
         properties.remove(key);
@@ -86,10 +91,5 @@ public class Product implements Serializable {
 //            if(this.properties.putIfAbsent(key, properties.get(key)) == null){
 //            this.properties.put(key + "idk_something to distinct", properties.get(key));
 //            }  // And this?
-    }
-
-    public void mergeProduct(ProductDTO productDTO) {
-        this.name = productDTO.getName();
-        this.description = productDTO.getDescription();
     }
 }

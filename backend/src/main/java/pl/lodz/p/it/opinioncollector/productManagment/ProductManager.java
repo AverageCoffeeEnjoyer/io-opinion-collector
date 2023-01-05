@@ -5,11 +5,12 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import pl.lodz.p.it.opinioncollector.category.managers.CategoryManager;
 import pl.lodz.p.it.opinioncollector.category.model.Category;
-import pl.lodz.p.it.opinioncollector.category.model.Field;
 import pl.lodz.p.it.opinioncollector.eventHandling.IProductEventManager;
 import pl.lodz.p.it.opinioncollector.exceptions.category.CategoryNotFoundException;
+import pl.lodz.p.it.opinioncollector.exceptions.products.ProductNotFoundException;
 import pl.lodz.p.it.opinioncollector.userModule.user.User;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -28,81 +29,91 @@ public class ProductManager implements IProductManager {
         this.categoryManager = categoryManager;
     }
 
+    // brak createProduct, ponieważ nie jest on potrzebny
 
-    public Product createProduct(ProductDTO productDTO) {
-        Product product = new Product(productDTO);
-        productRepository.save(product);
-        return product;
+    public Product getProduct(UUID constantProductId) {
+        List<Product> product = productRepository
+                .findByProductIdAndDeletedFalseAndConfirmedTrue(constantProductId);
+        if(product.isEmpty()) {
+            return null;
+        }
+        return product.get(0);
     }
 
-    public Product createSuggestion(ProductDTO productDTO) throws CategoryNotFoundException {
-        Product product = new Product(productDTO);
-
+    // updateProduct jest tak naprawdę stworzeniem od razu potwierdzonej sugestii
+    // categoryId nie jest brane pod uwagę przy updacie
+    public Product updateProduct(UUID productId, ProductDTO productDTO) {
         User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        product.setConfirmed(false);
 
+        Product product = getProduct(productId);
+        updateProduct(product, productDTO);
+        product.setConfirmed(true);
 
-        try {
-            product.setCategory(categoryManager.getCategory(productDTO.getCategoryId()));
-
-        } catch (CategoryNotFoundException e) {
-            throw new CategoryNotFoundException(e);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-
-        Category categoryTemp = product.getCategory();
-        while (categoryTemp != null) {
-            List<Field> fields = categoryTemp.getFields();
-            for (Field field :
-                    fields) {
-                product.addProperty(field.getName(), field.getType());
-            }
-            categoryTemp = categoryTemp.getParentCategory();
-        }
-
-        product.setParentProductId(null);
-        product.setConstantProductId(UUID.randomUUID());
         productRepository.save(product);
         eventManager.createProductReportEvent(user.getId(), "New product suggestion with name: \""
                         + product.getName() + "\" and description: \"" + product.getDescription() + "\"",
-                product.getProductId());
+                product.getUniqueProductId());
         return product;
     }
 
-    public Product getProduct(UUID uuid) {
-        Optional<Product> product = productRepository.findById(uuid);
-        return product.orElse(null);
-    }
+    // createSuggestion zostało rozbite na 3 metody:
+    //     - createCreateSuggestion - tworzenie nowych produktów
+    //     - createUpdateSuggestion - modyfikacja istniejącego produktu
+    //     - createDeleteSuggestion - usuwanie produktu
 
-    public Product updateProduct(UUID uuid, ProductDTO productDTO) {
-        Optional<Product> originalProduct = productRepository.findById(uuid);
-        if (originalProduct.isPresent()) {
-            Product newProduct = new Product(productDTO);
-            newProduct.setProperties(originalProduct.get().getProperties());
-            newProduct.setProperties(productDTO.getProperties());
-            newProduct.setParentProductId(originalProduct.get().getParentProductId());
-            newProduct.setConstantProductId(originalProduct.get().getConstantProductId()); //FIXME works for now?
-
-
-//            List<Product> latestVersionProductList = productRepository.
-//                    findByConstantProductIdAndDeletedFalse(newProduct.getConstantProductId());
-//            if (!latestVersionProductList.isEmpty()) {
-//                Product latestVersionProduct = latestVersionProductList.get(0);
-//                latestVersionProduct.setDeleted(true); //FIXME
-//            }
-
-            User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-            eventManager.createProductReportEvent(user.getId(),
-                    "User requested update of product: " + productDTO, newProduct.getParentProductId()); //This?
-            productRepository.save(newProduct);
-            return newProduct;
+    public Product createCreateSuggestion(ProductDTO productDTO) {
+        Category category;
+        try {
+            category = categoryManager.getCategory(productDTO.getCategoryId());
+        } catch (CategoryNotFoundException e) {
+            return null;
         }
-        return null;
+
+        Product product = new Product(productDTO, category);
+        productRepository.save(product);
+        User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        eventManager.createProductReportEvent(user.getId(), "New product suggestion with name: \""
+                        + product.getName() + "\" and description: \"" + product.getDescription() + "\"",
+                product.getUniqueProductId());
+        return product;
     }
 
-    public boolean confirmProduct(UUID uuid) {
-        Optional<Product> productOptional = productRepository.findById(uuid);
+    public Product createUpdateSuggestion(UUID productId, ProductDTO productDTO) throws ProductNotFoundException {
+        Product product = getProduct(productId);
+        if(product == null) {
+            throw new ProductNotFoundException();
+        }
+
+        updateProduct(product, productDTO);
+
+        productRepository.save(product);
+
+        User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        eventManager.createProductReportEvent(user.getId(), "New product suggestion with name: \""
+                        + product.getName() + "\" and description: \"" + product.getDescription() + "\"",
+                product.getUniqueProductId());
+        return product;
+    }
+
+    public boolean createDeleteSuggestion(UUID productId, ProductDeleteForm productDF) {
+        Product product = getProduct(productId);
+        if(product == null) {
+            return false;
+        }
+
+        updateProduct(product);
+
+        productRepository.save(product);
+
+        User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        eventManager.createProductReportEvent(user.getId(), "User requested deletion of" +
+                " a product with description: \"" + productDF.getDescription() + "\"", productId);
+        return true;
+    }
+
+    // to jest identyfikowane poprzez uniqueProductId
+    public boolean confirmProduct(UUID suggestionId) {
+        Optional<Product> productOptional = productRepository.findById(suggestionId);
         if (productOptional.isPresent()) {
             productOptional.get().setConfirmed(true);
             productRepository.save(productOptional.get());
@@ -111,6 +122,7 @@ public class ProductManager implements IProductManager {
         return false;
     }
 
+    // to jest identyfikowane poprzez uniqueProductId
     public boolean unconfirmProduct(UUID uuid) {
         Optional<Product> productOptional = productRepository.findById(uuid);
         if (productOptional.isPresent()) {
@@ -121,18 +133,7 @@ public class ProductManager implements IProductManager {
         return false;
     }
 
-    public boolean makeDeleteFormProduct(UUID uuid, ProductDeleteForm productDF) { //TODO delete form
-        Optional<Product> productOptional = productRepository.findById(uuid);
-        if (productOptional.isPresent()) {
-            User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
 
-            eventManager.createProductReportEvent(user.getId(), "User requested deletion of" +
-                    " a product with description: \"" + productDF.getDescription() + "\"", uuid);
-            //That's all?
-            return true;
-        }
-        return false;
-    }
 
     public boolean deleteProduct(UUID uuid) {
         Optional<Product> product = productRepository.findById(uuid);
@@ -156,8 +157,19 @@ public class ProductManager implements IProductManager {
         return productRepository.findByConfirmedFalse();
     }
 
-    public List<Product> getLatestVersionProduct(UUID uuid) {
-        return productRepository.findByConstantProductIdAndDeletedFalse(uuid);
+    private Product updateProduct(Product product, ProductDTO productDTO) {
+        updateProduct(product);
+        product.setName(productDTO.getName());
+        product.setDescription(product.getDescription());
+        product.setProperties(productDTO.getProperties());
+        product.setConfirmed(false);
+        return product;
+    }
+
+    private Product updateProduct(Product product) {
+        product.setUniqueProductId(UUID.randomUUID());
+        product.setCreatedAt(LocalDateTime.now());
+        return product;
     }
 
 
